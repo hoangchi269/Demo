@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
+
 @RestController
 @RequestMapping("/api/v1")
 public class InfoDataController {
@@ -15,19 +17,9 @@ public class InfoDataController {
     @Autowired
     InfoDataService infoDataService;
 
-    @Autowired
-    Message message;
-
     @PostMapping("/bankCode")
-    public ResponseEntity<?> bankCode(@RequestBody InfoData infoData) {
-
-        message = infoDataService.message(infoData);
-        if (message.getCode().equals(Common.CODE_00)) {
-            message = infoDataService.checkBanksCode(infoData);
-            return ResponseEntity.ok(message);
-        }else {
-            return ResponseEntity.ok(message);
-        }
-
+    public ResponseEntity<?> bankCode(@RequestBody @Valid InfoData infoData) {
+        Message message = infoDataService.checkBanksCode(infoData);
+        return ResponseEntity.ok(message);
     }
 }

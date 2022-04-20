@@ -1,0 +1,10 @@
+bank:
+  banks:
+    -
+      bankCode: VNPAY
+      privateKey: ghfffffff
+      ips:
+    -
+      bankCode: BIDV
+      privateKey: fffffff
+      ips:

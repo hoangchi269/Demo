@@ -1,0 +1,17 @@
+{
+  "groups": [
+    {
+      "name": "bank",
+      "type": "com.example.entity.ConfigBanks",
+      "sourceType": "com.example.entity.ConfigBanks"
+    }
+  ],
+  "properties": [
+    {
+      "name": "bank.banks",
+      "type": "java.util.List<com.example.entity.Bank>",
+      "sourceType": "com.example.entity.ConfigBanks"
+    }
+  ],
+  "hints": []
+}

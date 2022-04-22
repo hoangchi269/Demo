@@ -7,9 +7,6 @@ import com.example.entity.Message;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.hash.Hashing;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
@@ -23,59 +20,106 @@ import java.util.stream.Collectors;
 @Service
 public class InfoDataServiceImpl implements InfoDataService, Serializable {
 
-    final RedisTemplate<Object, Object> redisTemplate;
+    private final Message message;
     private final ConfigBanks configBanks;
-    private static final Logger logger = LogManager.getLogger(InfoDataServiceImpl.class);
+    private final ObjectMapper objectMapper;
+    private final RedisTemplate<Object, Object> redisTemplate;
 
-    public InfoDataServiceImpl(ConfigBanks configBanks, RedisTemplate redisTemplate) {
-        logger.info("Anh la so 2");
+    public InfoDataServiceImpl(ConfigBanks configBanks, RedisTemplate<Object, Object> redisTemplate, Message message, ObjectMapper objectMapper) {
+        this.message = message;
+        this.objectMapper = objectMapper;
         this.configBanks = configBanks;
         this.redisTemplate = redisTemplate;
     }
 
     @Override
     public Message checkBanksCode(InfoData infoData) {
-
-        Message message = new Message();
-        List<ConfigBanks.Bank> configBanksList = configBanks.getBanks().stream().filter(bank -> bank.getBankCode().equals(infoData.getBankCode()))
-                .collect(Collectors.toList());
-        if (configBanksList.size() <= 0) {
-            message.setCode(Common.CODE_02);
-            message.setMessage("BankCode find not found!");
-        } else {
-            String checkSum = infoData.getMobile() + infoData.getBankCode() + infoData.getAccountNo() + infoData.getPayDate()
-                    + infoData.getDebitAmount() + infoData.getRespCode() + infoData.getTraceTransfer() + infoData.getMessageType()
-                    + configBanksList.get(0).getPrivateKey();
-            String sha256hex = Hashing.sha256()
-                    .hashString(checkSum, StandardCharsets.UTF_8)
-                    .toString();
-            if (!sha256hex.trim().equals(infoData.getCheckSum())) {
-                message.setCode(Common.CODE_03);
-                message.setMessage("CheckSum error");
-            } else {
-
-                HashOperations hashOperations = redisTemplate.opsForHash();
-
-                ObjectMapper mapper = new ObjectMapper();
-                String jsonInfoData = "";
-                try {
-                    jsonInfoData = mapper.writeValueAsString(infoData);
-                } catch (JsonProcessingException e) {
-                    throw new RuntimeException(e);
-                }
-
-                hashOperations.put(infoData.getBankCode(), infoData.getTokenKey(), jsonInfoData);
-                redisTemplate.setKeySerializer(new StringRedisSerializer());
-                redisTemplate.setValueSerializer(new StringRedisSerializer());
-                redisTemplate.setHashKeySerializer(new StringRedisSerializer());
-                redisTemplate.setHashValueSerializer(new StringRedisSerializer());
-                redisTemplate.afterPropertiesSet();
-
-
-                message.setMessage(Common.SUCCESS);
-                message.setCode(Common.CODE_00);
-            }
+        getConfigBank(infoData);
+        if (checkBankExistInConfig(infoData)) {
+            return bankCodeIsExist();
         }
+        checkSumAndHashString(infoData);
+        if (!isEqualCheckSum(infoData)) {
+            return getMessageCheckSumError();
+        }
+        putHsetDataToRedisAndSetSerializer(infoData);
+        return getMessageSuccess();
+    }
+
+    public Boolean checkBankExistInConfig(InfoData infoData) {
+        return getConfigBank(infoData).size() <= 0;
+    }
+
+    public List<ConfigBanks.Bank> getConfigBank(InfoData infoData) {
+        return configBanks.getBanks().stream()
+                .filter(bank -> bank.getBankCode().equals(infoData.getBankCode()))
+                .collect(Collectors.toList());
+    }
+
+    public Boolean isEqualCheckSum(InfoData infoData) {
+        return checkSumAndHashString(infoData).trim().equals(infoData.getCheckSum());
+    }
+
+    public String checkSumAndHashString(InfoData infoData) {
+        String checkSum = infoData.getMobile()
+                + infoData.getBankCode()
+                + infoData.getAccountNo()
+                + infoData.getPayDate()
+                + infoData.getDebitAmount()
+                + infoData.getRespCode()
+                + infoData.getTraceTransfer()
+                + infoData.getMessageType()
+                + getConfigBank(infoData).get(0).getPrivateKey();
+        return hashStringCheckSum(checkSum);
+    }
+
+    public String hashStringCheckSum(String checkSum) {
+        return Hashing.sha256()
+                .hashString(checkSum, StandardCharsets.UTF_8)
+                .toString();
+    }
+
+    public void putHsetDataToRedisAndSetSerializer(InfoData infoData) {
+        putHsetData(infoData);
+        setSerializerRedisTemplate();
+    }
+
+    public void putHsetData(InfoData infoData) {
+        try {
+            HashOperations<Object, Object, Object> hashOperations = redisTemplate.opsForHash();
+            String jsonInfoData = objectMapper.writeValueAsString(infoData);
+            hashOperations.put(infoData.getBankCode(), infoData.getTokenKey(), jsonInfoData);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    public void setSerializerRedisTemplate() {
+        redisTemplate.setKeySerializer(new StringRedisSerializer());
+        redisTemplate.setValueSerializer(new StringRedisSerializer());
+        redisTemplate.setHashKeySerializer(new StringRedisSerializer());
+        redisTemplate.setHashValueSerializer(new StringRedisSerializer());
+        redisTemplate.afterPropertiesSet();
+    }
+
+    public Message bankCodeIsExist() {
+        message.setCode(Common.CODE_02);
+        message.setMessage("BankCode find not found!");
         return message;
     }
+
+    public Message getMessageSuccess() {
+        message.setCode(Common.CODE_00);
+        message.setMessage(Common.SUCCESS);
+        return message;
+    }
+
+    public Message getMessageCheckSumError() {
+        message.setCode(Common.CODE_03);
+        message.setMessage("CheckSum error");
+        return message;
+    }
+
 }
+

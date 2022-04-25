@@ -1,4 +1,4 @@
-package com.example.config;
+package vn.vnpay.config;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

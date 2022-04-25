@@ -1,32 +1,41 @@
-package com.example.common;
+package vn.vnpay.common;
 
-import com.example.bean.Message;
+import vn.vnpay.bean.Message;
 
 public class Common {
-    public static final String CODE_00 = "00";
-    public static final String CODE_01 = "01";
-    public static final String CODE_02 = "02";
-    public static final String CODE_03 = "03";
+
+    public enum Code {
+        CODE_00("00"), CODE_01("01"), CODE_02("02"), CODE_03("03");
+
+        private String code;
+
+        Code(String code) {
+            this.code = code;
+        }
+        public String getCode(){
+            return code;
+        }
+    }
+
     public static final String SUCCESS = "Success";
-    public static final String NULL_OR_BLANK = " is null or blank";
 
     public static Message getMessageBankCodeExist() {
         Message message = new Message();
-        message.setCode(Common.CODE_02);
+        message.setCode(Code.CODE_02.code);
         message.setMessage("BankCode find not found!");
         return message;
     }
 
     public static Message getMessageSuccess() {
         Message message = new Message();
-        message.setCode(Common.CODE_00);
+        message.setCode(Code.CODE_00.code);
         message.setMessage(Common.SUCCESS);
         return message;
     }
 
     public static Message getMessageCheckSumError() {
         Message message = new Message();
-        message.setCode(Common.CODE_03);
+        message.setCode(Code.CODE_03.code);
         message.setMessage("CheckSum error");
         return message;
     }

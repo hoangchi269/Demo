@@ -1,4 +1,4 @@
-package com.example.bean;
+package vn.vnpay.bean;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

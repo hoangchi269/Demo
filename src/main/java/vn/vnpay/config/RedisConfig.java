@@ -1,10 +1,11 @@
-package com.example.config;
+package vn.vnpay.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -12,11 +13,12 @@ import org.springframework.data.redis.core.RedisTemplate;
 
 @Slf4j
 @Configuration
+@PropertySource("classpath:application.properties")
 public class RedisConfig {
-    @Value("${redis.host}")
+    @Value("${spring.redis.host}")
     private String redisHost;
 
-    @Value("${redis.port}")
+    @Value("${spring.redis.port}")
     private int redisPort;
 
 
@@ -29,10 +31,7 @@ public class RedisConfig {
     @Bean
     @Primary
     public RedisTemplate<Object, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory) {
-        log.info("Anh la so 1");
         // tạo ra một RedisTemplate
-        // Với Key là Object
-        // Value là Object
         // RedisTemplate giúp chúng ta thao tác với Redis
         RedisTemplate<Object, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(redisConnectionFactory);

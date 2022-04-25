@@ -1,4 +1,4 @@
-package com.example.main;
+package vn.vnpay.main;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

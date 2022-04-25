@@ -1,7 +1,8 @@
-package com.example.controller;
+package vn.vnpay.controller;
 
-import com.example.common.Common;
-import com.example.bean.Message;
+import org.aspectj.apache.bcel.classfile.Code;
+import vn.vnpay.common.Common;
+import vn.vnpay.bean.Message;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,7 @@ public class CustomExceptionHandler extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatus status, WebRequest request) {
         Message messages = new Message();
         messages.setMessage(ex.getBindingResult().getAllErrors().get(0).getDefaultMessage());
-        messages.setCode(Common.CODE_01);
+        messages.setCode(Common.Code.CODE_01.getCode());
         return ResponseEntity.ok(messages);
     }
 }

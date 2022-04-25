@@ -1,9 +1,10 @@
-package com.example.service.impl;
+package vn.vnpay.service.impl;
 
-import com.example.bean.InfoData;
-import com.example.bean.Message;
-import com.example.config.ConfigBanks;
-import com.example.service.PaymentService;
+import lombok.extern.slf4j.Slf4j;
+import vn.vnpay.bean.InfoData;
+import vn.vnpay.bean.Message;
+import vn.vnpay.config.ConfigBanks;
+import vn.vnpay.service.PaymentService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.hash.Hashing;
@@ -11,14 +12,14 @@ import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.stereotype.Service;
+import vn.vnpay.common.Common;
 
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.example.common.Common.*;
-
+@Slf4j
 @Service
 public class PaymentServiceImpl implements PaymentService, Serializable {
     private final ConfigBanks configBanks;
@@ -37,30 +38,43 @@ public class PaymentServiceImpl implements PaymentService, Serializable {
 
     @Override
     public Message pay(InfoData infoData) {
+        log.info("-------------Start pay-------------");
         getConfigBank(infoData);
-        if (checkBankExistInConfig(infoData)) {
-            return getMessageBankCodeExist();
+        if (!checkBankExistInConfig(infoData)) {
+            return Common.getMessageBankCodeExist();
         }
         checkSumAndHashString(infoData);
         if (!isEqualCheckSum(infoData)) {
-            return getMessageCheckSumError();
+            return Common.getMessageCheckSumError();
         }
         cachePaymentInfo(infoData);
-        return getMessageSuccess();
+        return Common.getMessageSuccess();
     }
 
     public Boolean checkBankExistInConfig(InfoData infoData) {
-        return getConfigBank(infoData).size() <= 0;
+        if (getConfigBank(infoData).size() > 0) {
+            log.info("BankCode does exist: " + infoData.getBankCode());
+            return true;
+        }
+        log.error("BankCode does not exist: " + infoData.getBankCode());
+        return false;
     }
 
     public List<ConfigBanks.Bank> getConfigBank(InfoData infoData) {
         return configBanks.getBanks().stream()
                 .filter(bank -> bank.getBankCode().equals(infoData.getBankCode()))
                 .collect(Collectors.toList());
+
     }
 
     public Boolean isEqualCheckSum(InfoData infoData) {
-        return checkSumAndHashString(infoData).trim().equals(infoData.getCheckSum());
+        if (checkSumAndHashString(infoData).trim().equals(infoData.getCheckSum())) {
+            log.info("CheckSum: " + checkSumAndHashString(infoData));
+            return true;
+        } else {
+            log.error("CheckSum check equal fail: " + checkSumAndHashString(infoData).trim() + "---" + infoData.getCheckSum());
+            return false;
+        }
     }
 
     public String checkSumAndHashString(InfoData infoData) {
@@ -92,7 +106,9 @@ public class PaymentServiceImpl implements PaymentService, Serializable {
             HashOperations<Object, Object, Object> hashOperations = redisTemplate.opsForHash();
             String jsonInfoData = objectMapper.writeValueAsString(infoData);
             hashOperations.put(infoData.getBankCode(), infoData.getTokenKey(), jsonInfoData);
+            log.info("CacheData success");
         } catch (JsonProcessingException e) {
+            log.error("CacheData error!" + e);
             throw new RuntimeException(e);
         }
 

@@ -72,7 +72,10 @@ public class PaymentServiceImpl implements PaymentService, Serializable {
             log.info("CheckSum: " + checkSumAndHashString(infoData));
             return true;
         } else {
-            log.error("CheckSum check equal fail: " + checkSumAndHashString(infoData).trim() + "---" + infoData.getCheckSum());
+            log.error("CheckSum check equal fail: "
+                    + checkSumAndHashString(infoData).trim()
+                    + "---"
+                    + infoData.getCheckSum());
             return false;
         }
     }

@@ -1,7 +1,7 @@
 package com.example.controller;
 
 import com.example.common.Common;
-import com.example.entity.Message;
+import com.example.bean.Message;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

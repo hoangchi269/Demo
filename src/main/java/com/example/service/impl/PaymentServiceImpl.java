@@ -1,9 +1,9 @@
-package com.example.service;
+package com.example.service.impl;
 
-import com.example.common.Common;
-import com.example.entity.ConfigBanks;
-import com.example.entity.InfoData;
-import com.example.entity.Message;
+import com.example.bean.InfoData;
+import com.example.bean.Message;
+import com.example.config.ConfigBanks;
+import com.example.service.PaymentService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.hash.Hashing;
@@ -17,32 +17,35 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Service
-public class InfoDataServiceImpl implements InfoDataService, Serializable {
+import static com.example.common.Common.*;
 
-    private final Message message;
+@Service
+public class PaymentServiceImpl implements PaymentService, Serializable {
     private final ConfigBanks configBanks;
     private final ObjectMapper objectMapper;
     private final RedisTemplate<Object, Object> redisTemplate;
 
-    public InfoDataServiceImpl(ConfigBanks configBanks, RedisTemplate<Object, Object> redisTemplate, Message message, ObjectMapper objectMapper) {
-        this.message = message;
+    public PaymentServiceImpl(
+            ConfigBanks configBanks,
+            RedisTemplate<Object, Object> redisTemplate,
+            ObjectMapper objectMapper
+    ) {
         this.objectMapper = objectMapper;
         this.configBanks = configBanks;
         this.redisTemplate = redisTemplate;
     }
 
     @Override
-    public Message checkBanksCode(InfoData infoData) {
+    public Message pay(InfoData infoData) {
         getConfigBank(infoData);
         if (checkBankExistInConfig(infoData)) {
-            return bankCodeIsExist();
+            return getMessageBankCodeExist();
         }
         checkSumAndHashString(infoData);
         if (!isEqualCheckSum(infoData)) {
             return getMessageCheckSumError();
         }
-        putHsetDataToRedisAndSetSerializer(infoData);
+        cachePaymentInfo(infoData);
         return getMessageSuccess();
     }
 
@@ -79,12 +82,12 @@ public class InfoDataServiceImpl implements InfoDataService, Serializable {
                 .toString();
     }
 
-    public void putHsetDataToRedisAndSetSerializer(InfoData infoData) {
-        putHsetData(infoData);
+    public void cachePaymentInfo(InfoData infoData) {
+        cacheData(infoData);
         setSerializerRedisTemplate();
     }
 
-    public void putHsetData(InfoData infoData) {
+    public void cacheData(InfoData infoData) {
         try {
             HashOperations<Object, Object, Object> hashOperations = redisTemplate.opsForHash();
             String jsonInfoData = objectMapper.writeValueAsString(infoData);
@@ -101,24 +104,6 @@ public class InfoDataServiceImpl implements InfoDataService, Serializable {
         redisTemplate.setHashKeySerializer(new StringRedisSerializer());
         redisTemplate.setHashValueSerializer(new StringRedisSerializer());
         redisTemplate.afterPropertiesSet();
-    }
-
-    public Message bankCodeIsExist() {
-        message.setCode(Common.CODE_02);
-        message.setMessage("BankCode find not found!");
-        return message;
-    }
-
-    public Message getMessageSuccess() {
-        message.setCode(Common.CODE_00);
-        message.setMessage(Common.SUCCESS);
-        return message;
-    }
-
-    public Message getMessageCheckSumError() {
-        message.setCode(Common.CODE_03);
-        message.setMessage("CheckSum error");
-        return message;
     }
 
 }

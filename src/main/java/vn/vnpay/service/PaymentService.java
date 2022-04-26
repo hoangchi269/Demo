@@ -1,8 +1,8 @@
 package vn.vnpay.service;
 
-import vn.vnpay.bean.InfoData;
-import vn.vnpay.bean.Message;
+import vn.vnpay.bean.TransactionRequest;
+import vn.vnpay.common.Common.ResponeCode;
 
 public interface PaymentService {
-    Message pay(InfoData infoData);
+    ResponeCode pay(TransactionRequest transactionRequest);
 }

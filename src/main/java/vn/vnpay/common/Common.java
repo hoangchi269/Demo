@@ -1,42 +1,26 @@
 package vn.vnpay.common;
 
-import vn.vnpay.bean.Message;
-
 public class Common {
 
-    public enum Code {
-        CODE_00("00"), CODE_01("01"), CODE_02("02"), CODE_03("03");
+    public enum ResponeCode {
+        SUCCESS("00", "Success"),
+        INVALID_REQUEST("01", "Invalid request"),
+        INVALID_BANKCODE("02","Invalid bankcode"),
+        INVALID_CHECKSUM("03","Invalid checksum");
+        private final String code;
+        private final String message;
 
-        private String code;
-
-        Code(String code) {
+        ResponeCode(String code, String message) {
             this.code = code;
+            this.message = message;
         }
-        public String getCode(){
+
+        public String getCode() {
             return code;
         }
-    }
 
-    public static final String SUCCESS = "Success";
-
-    public static Message getMessageBankCodeExist() {
-        Message message = new Message();
-        message.setCode(Code.CODE_02.code);
-        message.setMessage("BankCode find not found!");
-        return message;
-    }
-
-    public static Message getMessageSuccess() {
-        Message message = new Message();
-        message.setCode(Code.CODE_00.code);
-        message.setMessage(Common.SUCCESS);
-        return message;
-    }
-
-    public static Message getMessageCheckSumError() {
-        Message message = new Message();
-        message.setCode(Code.CODE_03.code);
-        message.setMessage("CheckSum error");
-        return message;
+        public String getMessage() {
+            return message;
+        }
     }
 }

@@ -1,8 +1,7 @@
 package vn.vnpay.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
-import vn.vnpay.bean.InfoData;
-import vn.vnpay.bean.Message;
+import vn.vnpay.bean.TransactionRequest;
 import vn.vnpay.config.ConfigBanks;
 import vn.vnpay.service.PaymentService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -12,7 +11,7 @@ import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.stereotype.Service;
-import vn.vnpay.common.Common;
+import vn.vnpay.common.Common.ResponeCode;
 
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
@@ -37,59 +36,57 @@ public class PaymentServiceImpl implements PaymentService, Serializable {
     }
 
     @Override
-    public Message pay(InfoData infoData) {
+    public ResponeCode pay(TransactionRequest transactionRequest) {
         log.info("-------------Start pay-------------");
-        getConfigBank(infoData);
-        if (!checkBankExistInConfig(infoData)) {
-            return Common.getMessageBankCodeExist();
+        getConfigBank(transactionRequest);
+        if (!checkBankExistInConfig(transactionRequest)) {
+            return ResponeCode.INVALID_BANKCODE;
         }
-        checkSumAndHashString(infoData);
-        if (!isEqualCheckSum(infoData)) {
-            return Common.getMessageCheckSumError();
+        checkSumAndHashString(transactionRequest);
+        if (!isEqualCheckSum(transactionRequest)) {
+            return ResponeCode.INVALID_CHECKSUM;
         }
-        cachePaymentInfo(infoData);
-        return Common.getMessageSuccess();
+        cachePaymentInfo(transactionRequest);
+        return ResponeCode.SUCCESS;
     }
 
-    public Boolean checkBankExistInConfig(InfoData infoData) {
-        if (getConfigBank(infoData).size() > 0) {
-            log.info("BankCode does exist: " + infoData.getBankCode());
+    public Boolean checkBankExistInConfig(TransactionRequest transactionRequest) {
+        if (getConfigBank(transactionRequest).size() > 0) {
+            log.info("BankCode does exist: " + transactionRequest.getBankCode());
             return true;
         }
-        log.error("BankCode does not exist: " + infoData.getBankCode());
+        log.error("BankCode does not exist: " + transactionRequest.getBankCode());
         return false;
     }
 
-    public List<ConfigBanks.Bank> getConfigBank(InfoData infoData) {
+    public List<ConfigBanks.Bank> getConfigBank(TransactionRequest transactionRequest) {
         return configBanks.getBanks().stream()
-                .filter(bank -> bank.getBankCode().equals(infoData.getBankCode()))
+                .filter(bank -> bank.getBankCode().equals(transactionRequest.getBankCode()))
                 .collect(Collectors.toList());
-
     }
 
-    public Boolean isEqualCheckSum(InfoData infoData) {
-        if (checkSumAndHashString(infoData).trim().equals(infoData.getCheckSum())) {
-            log.info("CheckSum: " + checkSumAndHashString(infoData));
+    public Boolean isEqualCheckSum(TransactionRequest transactionRequest) {
+        if (checkSumAndHashString(transactionRequest).trim().equals(transactionRequest.getCheckSum())) {
+            log.info("CheckSum: " + checkSumAndHashString(transactionRequest));
             return true;
-        } else {
-            log.error("CheckSum check equal fail: "
-                    + checkSumAndHashString(infoData).trim()
-                    + "---"
-                    + infoData.getCheckSum());
-            return false;
         }
+        log.error("CheckSum check equal fail: "
+                + checkSumAndHashString(transactionRequest).trim()
+                + "---"
+                + transactionRequest.getCheckSum());
+        return false;
     }
 
-    public String checkSumAndHashString(InfoData infoData) {
-        String checkSum = infoData.getMobile()
-                + infoData.getBankCode()
-                + infoData.getAccountNo()
-                + infoData.getPayDate()
-                + infoData.getDebitAmount()
-                + infoData.getRespCode()
-                + infoData.getTraceTransfer()
-                + infoData.getMessageType()
-                + getConfigBank(infoData).get(0).getPrivateKey();
+    public String checkSumAndHashString(TransactionRequest transactionRequest) {
+        String checkSum = transactionRequest.getMobile()
+                + transactionRequest.getBankCode()
+                + transactionRequest.getAccountNo()
+                + transactionRequest.getPayDate()
+                + transactionRequest.getDebitAmount()
+                + transactionRequest.getRespCode()
+                + transactionRequest.getTraceTransfer()
+                + transactionRequest.getMessageType()
+                + getConfigBank(transactionRequest).get(0).getPrivateKey();
         return hashStringCheckSum(checkSum);
     }
 
@@ -99,16 +96,16 @@ public class PaymentServiceImpl implements PaymentService, Serializable {
                 .toString();
     }
 
-    public void cachePaymentInfo(InfoData infoData) {
-        cacheData(infoData);
+    public void cachePaymentInfo(TransactionRequest transactionRequest) {
+        cacheData(transactionRequest);
         setSerializerRedisTemplate();
     }
 
-    public void cacheData(InfoData infoData) {
+    public void cacheData(TransactionRequest transactionRequest) {
         try {
             HashOperations<Object, Object, Object> hashOperations = redisTemplate.opsForHash();
-            String jsonInfoData = objectMapper.writeValueAsString(infoData);
-            hashOperations.put(infoData.getBankCode(), infoData.getTokenKey(), jsonInfoData);
+            String jsonInfoData = objectMapper.writeValueAsString(transactionRequest);
+            hashOperations.put(transactionRequest.getBankCode(), transactionRequest.getTokenKey(), jsonInfoData);
             log.info("CacheData success");
         } catch (JsonProcessingException e) {
             log.error("CacheData error!" + e);

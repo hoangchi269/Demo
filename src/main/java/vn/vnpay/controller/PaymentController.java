@@ -1,5 +1,6 @@
 package vn.vnpay.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -8,10 +9,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.vnpay.bean.Message;
 import vn.vnpay.bean.TransactionRequest;
-import vn.vnpay.common.Common.ResponeCode;
+import vn.vnpay.common.Common.ResponseCode;
+import vn.vnpay.config.Snowflake;
 import vn.vnpay.service.PaymentService;
 
 import javax.validation.Valid;
+
+import static vn.vnpay.common.Common.SNOWFLAKE;
 
 @Slf4j
 @RestController
@@ -25,11 +29,17 @@ public class PaymentController {
 
     @PostMapping("/pay")
     public ResponseEntity<?> pay(@RequestBody @Valid TransactionRequest transactionRequest) {
-        ResponeCode responeCode = paymentService.pay(transactionRequest);
+        ResponseCode responseCode;
+        try {
+            responseCode = paymentService.pay(transactionRequest);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
         Message message  = new Message();
-        message.setCode(responeCode.getCode());
-        message.setMessage(responeCode.getMessage());
-        log.info("-------------End pay-------------");
+        message.setCode(responseCode.getCode());
+        message.setMessage(responseCode.getMessage());
+        log.info("Message : {}  [{}]", message , SNOWFLAKE);
+        log.info("End pay with BankCode: {}  [{}]", transactionRequest.getBankCode(), SNOWFLAKE);
         return ResponseEntity.ok(message);
     }
 }

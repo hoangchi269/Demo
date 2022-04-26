@@ -97,5 +97,4 @@ public class TransactionRequest {
     @NotNull(message = "promotionCode must not be null.")
     @NotBlank(message = "promotionCode must not be blank.")
     private String promotionCode;
-
 }

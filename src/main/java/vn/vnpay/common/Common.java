@@ -1,8 +1,10 @@
 package vn.vnpay.common;
 
+import vn.vnpay.config.Snowflake;
+
 public class Common {
 
-    public enum ResponeCode {
+    public enum ResponseCode {
         SUCCESS("00", "Success"),
         INVALID_REQUEST("01", "Invalid request"),
         INVALID_BANKCODE("02","Invalid bankcode"),
@@ -10,7 +12,7 @@ public class Common {
         private final String code;
         private final String message;
 
-        ResponeCode(String code, String message) {
+        ResponseCode(String code, String message) {
             this.code = code;
             this.message = message;
         }
@@ -23,4 +25,6 @@ public class Common {
             return message;
         }
     }
+
+    public static long SNOWFLAKE = (new Snowflake()).nextId();
 }

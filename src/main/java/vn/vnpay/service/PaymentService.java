@@ -1,8 +1,9 @@
 package vn.vnpay.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import vn.vnpay.bean.TransactionRequest;
-import vn.vnpay.common.Common.ResponeCode;
+import vn.vnpay.common.Common.ResponseCode;
 
 public interface PaymentService {
-    ResponeCode pay(TransactionRequest transactionRequest);
+    ResponseCode pay(TransactionRequest transactionRequest) throws JsonProcessingException;
 }

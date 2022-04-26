@@ -1,7 +1,5 @@
 package vn.vnpay.common;
 
-import vn.vnpay.config.Snowflake;
-
 public class Common {
 
     public enum ResponseCode {
@@ -25,6 +23,4 @@ public class Common {
             return message;
         }
     }
-
-    public static long SNOWFLAKE = (new Snowflake()).nextId();
 }

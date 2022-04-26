@@ -1,6 +1,7 @@
 package vn.vnpay.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
+
 import vn.vnpay.bean.TransactionRequest;
 import vn.vnpay.config.ConfigBanks;
 import vn.vnpay.config.Snowflake;
@@ -19,14 +20,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static vn.vnpay.common.Common.SNOWFLAKE;
-
-@Slf4j
 @Service
+@Slf4j
 public class PaymentServiceImpl implements PaymentService, Serializable {
     private final ConfigBanks configBanks;
     private final ObjectMapper objectMapper;
     private final RedisTemplate<Object, Object> redisTemplate;
+
 
     public PaymentServiceImpl(
             ConfigBanks configBanks,
@@ -39,7 +39,7 @@ public class PaymentServiceImpl implements PaymentService, Serializable {
 
     @Override
     public ResponseCode pay(TransactionRequest transactionRequest) throws JsonProcessingException {
-        log.info("Begin pay with request: {} [{}]", objectMapper.writeValueAsString(transactionRequest), SNOWFLAKE);
+        log.info("Begin pay with request: {}", objectMapper.writeValueAsString(transactionRequest));
         getConfigBank(transactionRequest);
         if (!checkBankExistInConfig(transactionRequest)) {
             return ResponseCode.INVALID_BANKCODE;
@@ -54,10 +54,10 @@ public class PaymentServiceImpl implements PaymentService, Serializable {
 
     public Boolean checkBankExistInConfig(TransactionRequest transactionRequest) {
         if (getConfigBank(transactionRequest).size() > 0) {
-            log.info("BankCode exist:{} [{}] ", transactionRequest.getBankCode(), SNOWFLAKE);
+            log.info("BankCode exist:{}", transactionRequest.getBankCode());
             return true;
         }
-        log.error("BankCode does not exist: {} [{}] ", transactionRequest.getBankCode(), SNOWFLAKE);
+        log.error("BankCode does not exist: {}", transactionRequest.getBankCode());
         return false;
     }
 
@@ -69,13 +69,12 @@ public class PaymentServiceImpl implements PaymentService, Serializable {
 
     public Boolean isEqualCheckSum(TransactionRequest transactionRequest) {
         if (checkSumAndHashString(transactionRequest).trim().equals(transactionRequest.getCheckSum())) {
-            log.info("CheckSum: {} [{}] ", checkSumAndHashString(transactionRequest), SNOWFLAKE);
+            log.info("CheckSum: {}", checkSumAndHashString(transactionRequest));
             return true;
         }
-        log.error("CheckSum check equal fail: {} --- {}  [{}] "
+        log.error("CheckSum check equal fail: {} --- {}"
                 , checkSumAndHashString(transactionRequest).trim()
-                , transactionRequest.getCheckSum()
-                , SNOWFLAKE);
+                , transactionRequest.getCheckSum());
         return false;
     }
 
@@ -108,9 +107,9 @@ public class PaymentServiceImpl implements PaymentService, Serializable {
             HashOperations<Object, Object, Object> hashOperations = redisTemplate.opsForHash();
             String jsonInfoData = objectMapper.writeValueAsString(transactionRequest);
             hashOperations.put(transactionRequest.getBankCode(), transactionRequest.getTokenKey(), jsonInfoData);
-            log.info("CacheData success [{}]", SNOWFLAKE);
+            log.info("CacheData success");
         } catch (JsonProcessingException e) {
-            log.error("CacheData error!" + e + "[{}]" , SNOWFLAKE);
+            log.error("CacheData error!" + e);
             throw new RuntimeException(e);
         }
 

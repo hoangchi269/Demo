@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import static vn.vnpay.common.Common.SNOWFLAKE;
 
 @Slf4j
 @RestControllerAdvice
@@ -24,7 +23,7 @@ public class CustomExceptionHandler extends ResponseEntityExceptionHandler {
         Message messages = new Message();
         messages.setMessage(ex.getBindingResult().getAllErrors().get(0).getDefaultMessage());
         messages.setCode(Common.ResponseCode.INVALID_REQUEST.getCode());
-        log.error("Method Argument Not Valid : {}  [{}]", messages, SNOWFLAKE);
+        log.error("Method Argument Not Valid : {}", messages);
         return ResponseEntity.ok(messages);
     }
 }

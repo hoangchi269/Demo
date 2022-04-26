@@ -2,6 +2,7 @@ package vn.vnpay.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,7 +16,7 @@ import vn.vnpay.service.PaymentService;
 
 import javax.validation.Valid;
 
-import static vn.vnpay.common.Common.SNOWFLAKE;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -29,6 +30,8 @@ public class PaymentController {
 
     @PostMapping("/pay")
     public ResponseEntity<?> pay(@RequestBody @Valid TransactionRequest transactionRequest) {
+        String uuid = UUID.randomUUID().toString();
+        MDC.put("id", uuid);
         ResponseCode responseCode;
         try {
             responseCode = paymentService.pay(transactionRequest);
@@ -38,8 +41,8 @@ public class PaymentController {
         Message message  = new Message();
         message.setCode(responseCode.getCode());
         message.setMessage(responseCode.getMessage());
-        log.info("Message : {}  [{}]", message , SNOWFLAKE);
-        log.info("End pay with BankCode: {}  [{}]", transactionRequest.getBankCode(), SNOWFLAKE);
+        log.info("Message : {}", message);
+        log.info("End pay with BankCode: {}", transactionRequest.getBankCode());
         return ResponseEntity.ok(message);
     }
 }

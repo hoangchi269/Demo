@@ -19,10 +19,4 @@ import java.util.List;
 @Component
 public class ConfigBanks {
     private List<Bank> banks;
-    @Data
-    public static class Bank {
-        private String bankCode;
-        private String privateKey;
-        private String ips;
-    }
 }

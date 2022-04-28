@@ -6,7 +6,9 @@ public class Common {
         SUCCESS("00", "Success"),
         INVALID_REQUEST("01", "Invalid request"),
         INVALID_BANKCODE("02","Invalid bankcode"),
-        INVALID_CHECKSUM("03","Invalid checksum");
+        INVALID_CHECKSUM("03","Invalid checksum"),
+        CONNECTION_FAILURE("04", "Connection Failure");
+
         private final String code;
         private final String message;
 

@@ -32,9 +32,9 @@ public class PaymentController {
 
     @PostMapping("/pay")
     public ResponseEntity<?> pay(@RequestBody @Valid TransactionRequest transactionRequest) throws JsonProcessingException {
-        log.info("Begin pay with request: {}", objectMapper.writeValueAsString(transactionRequest));
         String uuid = UUID.randomUUID().toString().toUpperCase().replace("-", "");
         MDC.put("id", uuid);
+        log.info("Begin pay with request: {}", objectMapper.writeValueAsString(transactionRequest));
         ResponseCode responseCode;
         try {
             responseCode = paymentService.pay(transactionRequest);
@@ -45,7 +45,8 @@ public class PaymentController {
         message.setCode(responseCode.getCode());
         message.setMessage(responseCode.getMessage());
         log.info("Message : {}", message);
-        log.info("End pay with BankCode: {}", transactionRequest.getBankCode());
+        if (responseCode.getCode().equals("00"))
+            log.info("End pay with BankCode: {}", transactionRequest.getBankCode());
         return ResponseEntity.ok(message);
     }
 }

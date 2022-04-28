@@ -3,10 +3,11 @@ package vn.vnpay.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.hash.Hashing;
+import io.lettuce.core.RedisCommandTimeoutException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.stereotype.Service;
 import vn.vnpay.bean.TransactionRequest;
 import vn.vnpay.common.Common.ResponseCode;
@@ -16,10 +17,7 @@ import vn.vnpay.service.PaymentService;
 
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -38,51 +36,46 @@ public class PaymentServiceImpl implements PaymentService, Serializable {
     }
 
     @Override
-    public ResponseCode pay(TransactionRequest transactionRequest) throws JsonProcessingException {
-        Bank bank = findBankByBankCode(transactionRequest.getBankCode()).get();
-        if (!checkBankExistInConfig(transactionRequest, bank)) {
+    public ResponseCode pay(TransactionRequest transactionRequest) {
+        Optional<Bank> bank = findBankByBankCode(transactionRequest.getBankCode());
+        if (bank.isEmpty()) {
             return ResponseCode.INVALID_BANKCODE;
         }
-        String makeCheckSum = makeCheckSum(transactionRequest, bank);
-        if (!isEqualCheckSum(transactionRequest, makeCheckSum)) {
+        String makeCheckSum = makeCheckSum(transactionRequest, bank.get());
+        if (!checkSumRequest(transactionRequest.getCheckSum(), makeCheckSum)) {
             return ResponseCode.INVALID_CHECKSUM;
         }
-        cachePaymentInfo(transactionRequest);
-        return ResponseCode.SUCCESS;
-    }
-
-    public boolean checkBankExistInConfig(TransactionRequest transactionRequest, Bank bank) {
-        if (bank != null) {
-            log.info("BankCode exist:{}", transactionRequest.getBankCode());
-            return true;
+        if (cachePaymentInfo(transactionRequest)) {
+            return ResponseCode.SUCCESS;
         }
-        log.info("BankCode does not exist: {}", transactionRequest.getBankCode());
-        return false;
+        return ResponseCode.CONNECTION_FAILURE;
     }
 
     public Optional<Bank> findBankByBankCode(String bankCode) {
-        try {
-            return configBanks.getBanks().stream()
-                    .filter(bank -> bank.getBankCode().equals(bankCode))
-                    .findFirst();
-        }catch (NoSuchElementException ex) {
-            log.info("Can not find bank by bank code", ex);
-            return Optional.empty();
+        Optional<Bank> optionalBank = configBanks.getBanks().stream()
+                .filter(bank -> bank.getBankCode().equals(bankCode))
+                .findFirst();
+        if (optionalBank.isPresent()) {
+            log.info("BankCode exist:{}", bankCode);
+            return optionalBank;
         }
+        log.info("Can not find bank by bank code: {}", bankCode);
+        return Optional.empty();
     }
 
-    public boolean isEqualCheckSum(TransactionRequest transactionRequest, String checkSum) { //TODO: sửa lại tên hàm, gọi checkSumAndHashString 3 lần
-        if (checkSum.equalsIgnoreCase(transactionRequest.getCheckSum())) {
+    public boolean checkSumRequest(String checkSumTransactionRequest, String checkSum) {
+        log.info("CheckSum Transaction Request: {}", checkSumTransactionRequest);
+        if (checkSum.trim().equalsIgnoreCase(checkSumTransactionRequest)) {
             log.info("Pass CheckSum: {}", checkSum);
             return true;
         }
         log.info("CheckSum check equal fail: {} --- {}"
                 , checkSum
-                , transactionRequest.getCheckSum());
+                , checkSumTransactionRequest);
         return false;
     }
 
-    public String makeCheckSum(TransactionRequest transactionRequest, Bank bank) { // TODO: tên hàm đổi -> makeCheckSum, thêm log các thông số checkSum trước và sau khi hasString
+    public String makeCheckSum(TransactionRequest transactionRequest, Bank bank) {
         String checkSum = transactionRequest.getMobile()
                 + transactionRequest.getBankCode()
                 + transactionRequest.getAccountNo()
@@ -91,40 +84,31 @@ public class PaymentServiceImpl implements PaymentService, Serializable {
                 + transactionRequest.getRespCode()
                 + transactionRequest.getTraceTransfer()
                 + transactionRequest.getMessageType()
-                + bank.getPrivateKey(); // TODO: duplicate findBankByBankCode, truyền bank đã tìm đc
+                + bank.getPrivateKey();
+        log.info("CheckSum before hashString: {} ", checkSum);
         return hashStringCheckSum(checkSum);
     }
 
     public String hashStringCheckSum(String checkSum) {
-        return Hashing.sha256()
+        String hashStringCheckSum = Hashing.sha256()
                 .hashString(checkSum, StandardCharsets.UTF_8)
                 .toString();
+        log.info("CheckSum after hashString: {}", hashStringCheckSum);
+        return hashStringCheckSum;
     }
 
-    public void cachePaymentInfo(TransactionRequest transactionRequest) { //TODO ghi log
-        setSerializerRedisTemplate();
-        cacheData(transactionRequest);
-    }
-
-    public void cacheData(TransactionRequest transactionRequest) {
+    public boolean cachePaymentInfo(TransactionRequest transactionRequest) {
         try {
-            String jsonInfoData = objectMapper.writeValueAsString(transactionRequest);
+            log.info("Begin cache payment to redis");
+            String jsonTransactionRequest = objectMapper.writeValueAsString(transactionRequest);
             HashOperations<Object, Object, Object> hashOperations = redisTemplate.opsForHash();
-            hashOperations.put(transactionRequest.getBankCode(), transactionRequest.getTokenKey(), jsonInfoData);
+            hashOperations.put(transactionRequest.getBankCode(), transactionRequest.getTokenKey(), jsonTransactionRequest);
             log.info("CacheData success");
-        } catch (JsonProcessingException e) {
+            return true;
+        } catch (JsonProcessingException | RedisConnectionFailureException | RedisCommandTimeoutException e) {
             log.error("CacheData error!", e);
-            throw new RuntimeException(e);
+            return false;
         }
-
-    }
-
-        public void setSerializerRedisTemplate() { //TODO  để hàm này trong file config redis
-        redisTemplate.setKeySerializer(new StringRedisSerializer());
-        redisTemplate.setValueSerializer(new StringRedisSerializer());
-        redisTemplate.setHashKeySerializer(new StringRedisSerializer());
-        redisTemplate.setHashValueSerializer(new StringRedisSerializer());
-        redisTemplate.afterPropertiesSet();
     }
 
 }
